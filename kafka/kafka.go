@@ -49,7 +49,7 @@ type (
 	}
 
 	// KafkaEventHandler will handle the events that are consumed from Kafka.
-	KafkaEventHandler func(map[string]interface{})
+	KafkaEventHandler func(event map[string]interface{}, offset int64)
 )
 
 var (
@@ -145,7 +145,7 @@ func newKafkaConsumer() sarama.Consumer {
 }
 
 // mainConsumer creates the consumer, checks partitions and consumes each one
-func MainConsumer(handler KafkaEventHandler, consumeTopic string, offset int64) {
+func MainConsumer(handler KafkaEventHandler, consumeTopic string, offset int64, updateOffset func(int64)) {
 	fmt.Print("Initializing main Consumer \n")
 	kafka := newKafkaConsumer()
 
@@ -163,12 +163,12 @@ func MainConsumer(handler KafkaEventHandler, consumeTopic string, offset int64) 
 		}
 
 		// Eternal consuming loop
-		consumeEvents(consumer, handler)
+		consumeEvents(consumer, handler, updateOffset)
 	}
 }
 
 // consumeEvents consumes events received
-func consumeEvents(consumer sarama.PartitionConsumer, handler KafkaEventHandler) {
+func consumeEvents(consumer sarama.PartitionConsumer, handler KafkaEventHandler, updateOffset func(int64)) {
 	var msgVal []byte
 	var log interface{}
 	var logMap map[string]interface{}
@@ -195,26 +195,9 @@ func consumeEvents(consumer sarama.PartitionConsumer, handler KafkaEventHandler)
 			logMap = log.(map[string]interface{})
 			logType := logMap["Type"]
 			fmt.Printf("Processing %s:\n%s\n", logType, string(msgVal))
-
-			switch logType {
-			case "NotificationRequest":
-				// message as  {"Type": "NotificationRequest", "Body": {"Kind": "PipelineUpdate", "ConcertID": "1", "Reason": "WebHookReceived"}}
-				fmt.Printf("Event %s received \n", logType)
-				// msgBodyKind := gjson.Get(string(msgVal), "Body.Kind").String()
-				// msgBodyConcertID := gjson.Get(string(msgVal), "Body.ConcertID").String()
-				// msgBodyReason := gjson.Get(string(msgVal), "Body.Reason").String()
-
-				handler(logMap)
-				fmt.Printf("Event %s executed \n", logType)
-
-			case "IntegrationEvent":
-				fmt.Printf("Event %s received \n", logType)
-				handler(logMap)
-				fmt.Printf("Event %s executed \n", logType)
-
-			default:
-				fmt.Println("Unknown command: ", logType)
-			}
+			handler(logMap, thisEvent.Offset)
+			fmt.Printf("Event %s executed \n", logType)
+			updateOffset(thisEvent.Offset)
 		}
 	}
 }
