@@ -31,6 +31,7 @@ type (
 	NotificationEventBody struct {
 		Kind            string
 		ConcertID       string
+		Reason          string
 		EnvironmentID   string
 		EnvironmentName string
 		NoteID          string
@@ -45,6 +46,7 @@ type (
 		Body struct {
 			Kind      string
 			ConcertID string
+			Reason    string
 		}
 	}
 
