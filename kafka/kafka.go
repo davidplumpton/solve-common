@@ -51,7 +51,7 @@ type (
 	}
 
 	// KafkaEventHandler will handle the events that are consumed from Kafka.
-	KafkaEventHandler func(event map[string]interface{}, offset int64)
+	KafkaEventHandler func(event map[string]interface{}, offset int64) error
 )
 
 var (
@@ -197,9 +197,11 @@ func consumeEvents(consumer sarama.PartitionConsumer, handler KafkaEventHandler,
 			logMap = log.(map[string]interface{})
 			logType := logMap["Type"]
 			fmt.Printf("Processing %s:\n%s\n", logType, string(msgVal))
-			handler(logMap, thisEvent.Offset)
+			handlerErr := handler(logMap, thisEvent.Offset)
 			fmt.Printf("Event %s executed \n", logType)
-			updateOffset(thisEvent.Offset)
+			if handlerErr == nil {
+				updateOffset(thisEvent.Offset)
+			}
 		}
 	}
 }
