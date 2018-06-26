@@ -10,6 +10,12 @@ import (
 	"github.com/globalsign/mgo"
 )
 
+// Create a new mongo connection
+func WrapMongoConnection() MongoSession {
+	var s *mgo.Session = NewMongoConnection()
+	return &MgoSession{s}
+}
+
 func NewMongoConnection() *mgo.Session {
 	fmt.Print("Initializing mongoDB connection \n")
 
