@@ -4,10 +4,22 @@ package mongo
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"runtime"
+	"strconv"
 
 	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
+)
+
+type (
+	OffSetModel struct {
+		ID       bson.ObjectId `bson:"_id,omitempty"`
+		Position int64         `bson:"Position"`
+	}
+
+	CreateConnectionFunc func() MongoSession
 )
 
 // Create a new mongo connection
@@ -84,6 +96,151 @@ func NewMongoConnection() *mgo.Session {
 	session.SetMode(mgo.Monotonic, true)
 
 	return session.Copy()
+}
+
+// LocalOffSetRead reads local last offset position
+func LocalOffSetRead(offSetFile string) (offSetPosition int64) {
+	actualName := "."
+	actualName += offSetFile
+
+	_, err := os.Stat(actualName)
+	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Printf("Buffer file does not exist. Creating %s\n", actualName)
+			newFile, err := os.OpenFile(
+				actualName,
+				os.O_WRONLY|os.O_TRUNC|os.O_CREATE,
+				0666,
+			)
+			if err != nil {
+				fmt.Printf("Cannot create file: %s \n", err)
+				os.Exit(-1)
+			}
+			defer newFile.Close()
+
+			fmt.Printf("New buffer file %s created. \n", actualName)
+
+			// Write bytes to file
+			byteSlice := []byte("-2")
+			bytesWritten, err := newFile.Write(byteSlice)
+			if err != nil {
+				fmt.Printf("Cannot write to file: %s \n", err)
+				os.Exit(-1)
+			}
+			fmt.Printf("Wrote %d bytes.\n", bytesWritten)
+
+			offSetPosition = -2
+
+			return offSetPosition
+		}
+	}
+	fmt.Println("Opening local buffer file:")
+
+	file, err := os.Open(actualName)
+	if err != nil {
+		fmt.Printf("Cannot open file: %s \n", err)
+		os.Exit(-1)
+	}
+
+	data, err := ioutil.ReadAll(file)
+	if err != nil {
+		fmt.Printf("Cannot read file: %s \n", err)
+		os.Exit(-1)
+	}
+
+	fmt.Printf("Local buffer Position is: %s\n", data)
+
+	intPosition, _ := strconv.ParseInt(string(data), 10, 64)
+	intPosition = intPosition + 1
+	offSetPosition = intPosition
+
+	return offSetPosition
+}
+
+// MongoOffSetRead reads mongo last offset position
+func MongoOffSetRead(createConnection CreateConnectionFunc, databaseName string, offSetCollection string) (offSetPosition int64, err error) {
+	mongo := createConnection()
+	collection := mongo.DB(databaseName).C(offSetCollection)
+
+	fmt.Println("Preparing offset select statement")
+	thisResult := OffSetModel{}
+	offset := collection.Find(bson.M{}).One(&thisResult)
+
+	if offset != nil {
+		fmt.Println("No offset recorded for this topic, beggining one")
+		collection.Insert(&OffSetModel{Position: -2})
+		offSetPosition = -2
+		err = nil
+	} else {
+		fmt.Println("Offset found in mongodb:")
+		fmt.Println("MongoDB ObjectID: ", thisResult.ID)
+		fmt.Println("MongoDB Offset Position: ", thisResult.Position)
+		intPosition := thisResult.Position
+		intPosition = intPosition + 1
+		offSetPosition = intPosition
+		err = nil
+	}
+
+	mongo.Close()
+	return offSetPosition, err
+}
+
+// LocalOffSetWrite writes local last offset position
+func LocalOffSetWrite(offSetFile string, offSetPosition int64) {
+	actualName := "."
+	actualName += offSetFile
+
+	newFile, err := os.OpenFile(
+		actualName,
+		os.O_WRONLY|os.O_TRUNC|os.O_CREATE,
+		0666,
+	)
+	if err != nil {
+		fmt.Printf("Cannot create file: %s \n", err)
+	}
+	defer newFile.Close()
+
+	//byteConvert := strconv.FormatInt(offSetPosition, 64)
+	byteConvert := fmt.Sprintf("%v", offSetPosition)
+	err = ioutil.WriteFile(actualName, []byte(byteConvert), 0666)
+	if err != nil {
+		fmt.Printf("Cannot write to file: %s \n", err)
+	}
+
+	fmt.Printf("Successfully wrote to file %v \n", actualName)
+
+	return
+}
+
+// MongoOffSetWrite writes mongo last offset position
+func MongoOffSetWrite(
+	createConnection CreateConnectionFunc,
+	databaseName string,
+	offSetCollection string,
+	offSetPosition int64) {
+	//Store offset on mongo
+	mongo := createConnection()
+	collection := mongo.DB(databaseName).C(offSetCollection)
+
+	fmt.Println("Preparing offset update statement")
+
+	thisQuery := bson.M{}
+	thisChange := bson.M{"$set": bson.M{"Position": offSetPosition}}
+
+	fmt.Println("Executing offset update statement")
+
+	err := collection.Update(thisQuery, thisChange)
+	mongo.Close()
+
+	if err != nil {
+		fmt.Println("Error Updating: ", err)
+	} else {
+		fmt.Println("Update completed: ", err)
+	}
+
+	fmt.Printf("Updated OffSet %v on %v in mongoDB \n", offSetPosition, offSetCollection)
+
+	return
 }
 
 // Allow for mocking of MongoDB during tests.
