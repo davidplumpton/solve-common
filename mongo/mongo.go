@@ -115,11 +115,15 @@ type (
 		Find(query interface{}) MongoQuery
 		Update(selector interface{}, update interface{}) error
 		Insert(docs ...interface{}) error
+		Remove(selector interface{}) error
+		Upsert(selector interface{}, update interface{}) (info *mgo.ChangeInfo, err error)
 	}
 
 	MongoQuery interface {
 		Select(selector interface{}) MongoQuery
 		One(result interface{}) error
+		Count() (int, error)
+		All(result interface{}) error
 	}
 )
 
@@ -147,10 +151,26 @@ func (c *MgoCollection) Find(query interface{}) MongoQuery {
 	return &MgoQuery{c.Wrapped.Find(query)}
 }
 
+func (c *MgoCollection) Remove(selector interface{}) error {
+	return c.Wrapped.Remove(selector)
+}
+
+func (c *MgoCollection) Upsert(selector interface{}, update interface{}) (info *mgo.ChangeInfo, err error) {
+	return c.Wrapped.Upsert(selector, update)
+}
+
 func (q *MgoQuery) Select(selector interface{}) MongoQuery {
 	return &MgoQuery{q.Wrapped.Select(selector)}
 }
 
 func (q *MgoQuery) One(result interface{}) error {
 	return q.Wrapped.One(result)
+}
+
+func (q *MgoQuery) Count() (int, error) {
+	return q.Wrapped.Count()
+}
+
+func (q *MgoQuery) All(result interface{}) error {
+	return q.Wrapped.All(result)
 }
