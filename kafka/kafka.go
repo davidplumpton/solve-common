@@ -175,7 +175,7 @@ func consumeEvents(consumer sarama.PartitionConsumer, handler KafkaEventHandler,
 	var log interface{}
 	var logMap map[string]interface{}
 
-	fmt.Print("Solve Notifier started and ready to consume Events\n")
+	fmt.Print("Service started and ready to consume Events\n")
 
 	// Startup completed.
 
