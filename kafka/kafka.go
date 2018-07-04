@@ -18,6 +18,7 @@ type (
 			Kind      string
 			ConcertID string
 			Reason    string
+			Details   interface{}
 		}
 	}
 
@@ -38,6 +39,7 @@ type (
 		SymphonyID      string
 		NoteSource      string
 		NoteParams      string
+		Details         string
 	}
 
 	// IntegrationEvent indicates some integration activity may be needed.
@@ -219,13 +221,14 @@ func NewIntegrationEvent(kind string, concertID string, reason string) *Integrat
 }
 
 // NewWebSocketEvent creates a new WebSocketEvent.
-func NewWebSocketEvent(kind string, concertID string, reason string) *WebSocketEvent {
+func NewWebSocketEvent(kind string, concertID string, reason string, details interface{}) *WebSocketEvent {
 	return &WebSocketEvent{
 		Type: "WebSocketEvent",
 		Body: struct {
 			Kind      string
 			ConcertID string
 			Reason    string
-		}{Kind: kind, ConcertID: concertID, Reason: reason},
+			Details   interface{}
+		}{Kind: kind, ConcertID: concertID, Reason: reason, Details: details},
 	}
 }
