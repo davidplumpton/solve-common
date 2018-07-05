@@ -49,6 +49,7 @@ type (
 			Kind      string
 			ConcertID string
 			Reason    string
+			Details   string
 		}
 	}
 
@@ -209,14 +210,15 @@ func consumeEvents(consumer sarama.PartitionConsumer, handler KafkaEventHandler,
 }
 
 // NewIntegrationEvent creates a new IntegrationEvent
-func NewIntegrationEvent(kind string, concertID string, reason string) *IntegrationEvent {
+func NewIntegrationEvent(kind string, concertID string, reason string, details string) *IntegrationEvent {
 	return &IntegrationEvent{
 		Type: "IntegrationEvent",
 		Body: struct {
 			Kind      string
 			ConcertID string
 			Reason    string
-		}{Kind: kind, ConcertID: concertID, Reason: reason},
+			Details   string
+		}{Kind: kind, ConcertID: concertID, Reason: reason, Details: details},
 	}
 }
 

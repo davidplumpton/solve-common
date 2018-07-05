@@ -233,7 +233,7 @@ func MongoOffSetWrite(
 	mongo.Close()
 
 	if err != nil {
-		fmt.Println("Error Updating: ", err)
+		fmt.Printf("Error Updating: %s %s", err, offSetCollection)
 	} else {
 		fmt.Println("Update completed: ", err)
 	}
