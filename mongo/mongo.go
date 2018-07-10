@@ -160,6 +160,7 @@ func LocalOffSetRead(offSetFile string) (offSetPosition int64) {
 // MongoOffSetRead reads mongo last offset position
 func MongoOffSetRead(createConnection CreateConnectionFunc, databaseName string, offSetCollection string) (offSetPosition int64, err error) {
 	mongo := createConnection()
+	defer mongo.Close()
 	collection := mongo.DB(databaseName).C(offSetCollection)
 
 	fmt.Println("Preparing offset select statement")
@@ -181,7 +182,6 @@ func MongoOffSetRead(createConnection CreateConnectionFunc, databaseName string,
 		err = nil
 	}
 
-	mongo.Close()
 	return offSetPosition, err
 }
 
@@ -220,6 +220,7 @@ func MongoOffSetWrite(
 	offSetPosition int64) {
 	//Store offset on mongo
 	mongo := createConnection()
+	defer mongo.Close()
 	collection := mongo.DB(databaseName).C(offSetCollection)
 
 	fmt.Println("Preparing offset update statement")
@@ -230,7 +231,6 @@ func MongoOffSetWrite(
 	fmt.Println("Executing offset update statement")
 
 	err := collection.Update(thisQuery, thisChange)
-	mongo.Close()
 
 	if err != nil {
 		fmt.Printf("Error Updating: %s %s", err, offSetCollection)
