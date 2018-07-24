@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"strings"
 
 	"github.com/Shopify/sarama"
 )
@@ -91,14 +90,7 @@ func NewKafkaSyncProducer() sarama.SyncProducer {
 
 // SendMsg Send messages to kafka
 func SendMsg(kafka sarama.SyncProducer, sendTopic string, event interface{}) error {
-	thisOldJson, err := json.Marshal(event)
-	// workaround for double marshal
-	thisJson := strings.Replace(string(thisOldJson), `\"`, `"`, -1)
-	thisJson = strings.Replace(string(thisJson), `"[`, `[`, -1)
-	thisJson = strings.Replace(string(thisJson), `]"`, `]`, -1)
-	thisJson = strings.Replace(string(thisJson), `"{`, `{`, -1)
-	thisJson = strings.Replace(string(thisJson), `}"`, `}`, -1)
-	// end workaround for double marshal
+	thisJson, err := json.Marshal(event)
 	thisTopic := sendTopic
 
 	if err != nil {
