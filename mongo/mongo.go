@@ -301,7 +301,7 @@ func (c *MgoCollection) Update(selector interface{}, update interface{}) error {
 }
 
 func (c *MgoCollection) Insert(docs ...interface{}) error {
-	return c.Wrapped.Insert(docs)
+	return c.Wrapped.Insert(docs...)
 }
 
 func (c *MgoCollection) Find(query interface{}) MongoQuery {
