@@ -38,7 +38,7 @@ type (
 		SymphonyID      string
 		NoteSource      string
 		NoteParams      string
-		Details         string
+		Details         interface{}
 	}
 
 	// IntegrationEvent indicates some integration activity may be needed.
