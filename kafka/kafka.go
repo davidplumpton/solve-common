@@ -57,8 +57,9 @@ type (
 )
 
 var (
-	brokers = []string{"kafka-headless:9092"}
-	err     error
+	brokers            = []string{"kafka-headless:9092"}
+	err                error
+	simultaneousEvents = 1
 )
 
 // Begin by creating kafka consumer information/configuration
@@ -151,6 +152,8 @@ func MainConsumer(handler KafkaEventHandler, consumeTopic string, offset int64, 
 		fmt.Printf("Error retrieving partitionList %s\n", err)
 	}
 
+	events := make(chan *sarama.ConsumerMessage, simultaneousEvents)
+
 	for _, partition := range partitionList {
 		consumer, err := kafka.ConsumePartition(consumeTopic, partition, offset)
 		if err != nil {
@@ -159,30 +162,26 @@ func MainConsumer(handler KafkaEventHandler, consumeTopic string, offset int64, 
 			os.Exit(-1)
 		}
 
-		// Eternal consuming loop
-		consumeEvents(consumer, handler, updateOffset)
+		go func(consumer sarama.PartitionConsumer) {
+			for thisEvent := range consumer.Messages() {
+				events <- thisEvent
+			}
+		}(consumer)
 	}
+
+	// Eternal consuming loop
+	consumeEvents(events, handler, updateOffset)
 }
 
 // consumeEvents consumes events received
-func consumeEvents(consumer sarama.PartitionConsumer, handler KafkaEventHandler, updateOffset func(int64)) {
+func consumeEvents(events chan *sarama.ConsumerMessage, handler KafkaEventHandler, updateOffset func(int64)) {
 	var msgVal []byte
 	var log interface{}
 	var logMap map[string]interface{}
 
 	fmt.Print("Service started and ready to consume Events\n")
 
-	// Startup completed.
-
-	if err != nil {
-		for err := range consumer.Errors() {
-			fmt.Print("Failed to consumeEvents - stack trace/error message below\n")
-			fmt.Printf("Kafka error: %s\n", err)
-			consumer.AsyncClose()
-		}
-	}
-
-	for thisEvent := range consumer.Messages() {
+	for thisEvent := range events {
 		fmt.Printf("Reading messages from offset %#v\n", thisEvent.Offset)
 		msgVal = thisEvent.Value
 
